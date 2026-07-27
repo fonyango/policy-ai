@@ -133,10 +133,18 @@ docker run -d \
 
 ### 3. Install and start Ollama
 
-Pull the model:
+PolicyAI uses Ollama to run the local Qwen model for query rewriting and answer generation.
+
+Make sure Ollama is installed, then pull the model:
 
 ```bash
 ollama pull qwen3:8b
+```
+
+Start ollama server
+
+```bash
+ollama serve
 ```
 
 Ensure Ollama is running before starting the application.

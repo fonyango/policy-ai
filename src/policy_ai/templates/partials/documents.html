@@ -1,0 +1,24 @@
+{% if documents %}
+<div class="document-list">
+    {% for document in documents %}
+    <article class="document-row" id="document-{{ loop.index }}">
+        <div>
+            <strong>{{ document.filename }}</strong>
+            <small>{{ document.processed_files | length }} processed files</small>
+        </div>
+
+        <button
+            class="delete-button"
+            hx-delete="/ui/documents/{{ document.filename }}"
+            hx-target="#documents"
+            hx-swap="innerHTML"
+            hx-confirm="Delete this document and its indexed content?"
+        >
+            Delete
+        </button>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty-state">No documents uploaded.</p>
+{% endif %}

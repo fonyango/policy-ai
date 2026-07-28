@@ -1,27 +1,14 @@
-from typing import Any
-
-from fastapi import FastAPI, HTTPException, Form
-from pydantic import BaseModel, Field
-from qdrant_client import QdrantClient, models
 from pathlib import Path
 from shutil import copyfileobj
-from markdown import markdown
-from fastapi import File, UploadFile
-from policy_ai.config import settings
-from fastapi.responses import HTMLResponse
+from typing import Any
 
-from policy_ai.ingestion.pipeline import process_document
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from qdrant_client import QdrantClient, models
 
 from policy_ai.generation.generator import generate_answer
-
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi import Request
-
-import os
-
-from starlette.middleware.sessions import SessionMiddleware
-from policy_ai.generation.query_rewriter import rewrite_query
+from policy_ai.ingestion.pipeline import process_document
 
 QDRANT_URL = "http://localhost:6333"
 COLLECTION_NAME = "policy_documents"
@@ -32,19 +19,14 @@ app = FastAPI(
 )
 
 app.add_middleware(
-    SessionMiddleware,
-    secret_key=settings.session_secret,
-    same_site="lax",
-    https_only=False,
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-
-app.mount(
-    "/static",
-    StaticFiles(directory="src/policy_ai/static"),
-    name="static",
-)
-
-templates = Jinja2Templates(directory="src/policy_ai/templates")
 
 
 class IngestResponse(BaseModel):
@@ -98,12 +80,11 @@ def get_document_summaries() -> list[dict[str, Any]]:
 
 
 @app.get("/")
-def home(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={},
-    )
+def root() -> dict[str, str]:
+    return {
+        "name": "PolicyAI API",
+        "docs": "/docs",
+    }
 
 
 @app.get("/health")
@@ -232,119 +213,3 @@ def ask(request: AskRequest) -> AskResponse:
             status_code=500,
             detail=str(exc),
         ) from exc
-
-
-@app.get("/ui/documents", response_class=HTMLResponse)
-def documents_ui(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="partials/documents.html",
-        context={"documents": get_document_summaries()},
-    )
-
-
-@app.post("/ui/documents", response_class=HTMLResponse)
-def upload_document_ui(
-    request: Request,
-    file: UploadFile = File(...),
-):
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        return templates.TemplateResponse(
-            request=request,
-            name="partials/upload_error.html",
-            context={"message": "Only PDF files are supported."},
-            status_code=400,
-        )
-
-    raw_dir = Path("data/raw")
-    raw_dir.mkdir(parents=True, exist_ok=True)
-
-    safe_name = Path(file.filename).name
-    saved_path = raw_dir / safe_name
-
-    try:
-        with saved_path.open("wb") as destination:
-            copyfileobj(file.file, destination)
-
-        process_document(saved_path)
-
-        return templates.TemplateResponse(
-            request=request,
-            name="partials/upload_result.html",
-            context={"filename": safe_name},
-            headers={"HX-Trigger": "documentsChanged"},
-        )
-
-    except Exception as exc:
-        saved_path.unlink(missing_ok=True)
-
-        return templates.TemplateResponse(
-            request=request,
-            name="partials/upload_error.html",
-            context={"message": f"Failed to process {safe_name}: {exc}"},
-            status_code=500,
-        )
-
-
-@app.post("/ui/ask", response_class=HTMLResponse)
-def ask_ui(
-    request: Request,
-    question: str = Form(...),
-    document: str = Form(default=""),
-):
-    history = request.session.get("conversation", [])
-
-    standalone_query = rewrite_query(
-        question=question,
-        history=history,
-    )
-
-    result = generate_answer(
-        query=standalone_query,
-        filename=document or None,
-    )
-
-    history.append(
-        {
-            "question": question,
-            "answer": result["answer"],
-        }
-    )
-
-    request.session["conversation"] = history[-3:]
-
-    return templates.TemplateResponse(
-        request=request,
-        name="partials/answer.html",
-        context={
-            "question": question,
-            "answer": markdown(result["answer"]),
-            "sources": result["sources"],
-        },
-    )
-
-
-@app.delete("/ui/documents/{filename}", response_class=HTMLResponse)
-def delete_document_ui(
-    request: Request,
-    filename: str,
-):
-    delete_document(filename)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="partials/documents.html",
-        context={"documents": get_document_summaries()},
-        headers={"HX-Trigger": "documentsChanged"},
-    )
-
-
-@app.get("/ui/document-options", response_class=HTMLResponse)
-def document_options_ui(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="partials/document_options.html",
-        context={
-            "documents": get_document_summaries(),
-        },
-    )

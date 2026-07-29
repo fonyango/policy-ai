@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from qdrant_client import QdrantClient, models
 from fastembed import SparseTextEmbedding
+from qdrant_client import QdrantClient, models
 
 COLLECTION_NAME = "policy_documents"
 QDRANT_URL = "http://localhost:6333"

@@ -1,9 +1,10 @@
-from typing import Any
 import re
+from pathlib import Path
+from typing import Any
+
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer, CrossEncoder
-from pathlib import Path
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 DENSE_MODEL_NAME = "BAAI/bge-m3"
 SPARSE_MODEL_NAME = "Qdrant/bm25"
@@ -11,7 +12,6 @@ RERANKER_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
 
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
-RERANK_THRESHOLD = 0.55
 
 COLLECTION_NAME = "policy_documents"
 QDRANT_URL = "http://localhost:6333"
@@ -98,7 +98,6 @@ def retrieve(
     pairs = [
         (
             query,
-            f"Section: {result.payload.get('section', '')}\n"
             f"Section: {result.payload.get('section', '')}\n\n"
             f"{result.payload.get('content', '')}",
         )
@@ -107,29 +106,42 @@ def retrieve(
 
     rerank_scores = reranker.predict(pairs)
 
-    reranked = sorted(
-        zip(results, rerank_scores, strict=True),
-        key=lambda item: (
-            float(item[1])
-            + 0.10
-            * _section_match(
-                query,
-                item[0].payload.get("section", ""),
-            )
-        ),
+    reranked = []
+
+    for result, rerank_score in zip(results, rerank_scores, strict=True):
+        section_score = _section_match(
+            query,
+            result.payload.get("section", ""),
+        )
+
+        final_score = float(rerank_score) + (0.10 * section_score)
+
+        reranked.append(
+            {
+                "result": result,
+                "rerank_score": float(rerank_score),
+                "section_score": section_score,
+                "final_score": final_score,
+            }
+        )
+
+    reranked.sort(
+        key=lambda item: item["final_score"],
         reverse=True,
     )
 
     return [
         {
-            "score": float(rerank_score),
-            "section": result.payload.get("section"),
-            "page_start": result.payload.get("page_start"),
-            "page_end": result.payload.get("page_end"),
-            "content": result.payload.get("content"),
-            "document_title": result.payload.get("document_title"),
+            "score": item["final_score"],
+            "rerank_score": item["rerank_score"],
+            "section_score": item["section_score"],
+            "section": item["result"].payload.get("section"),
+            "page_start": item["result"].payload.get("page_start"),
+            "page_end": item["result"].payload.get("page_end"),
+            "content": item["result"].payload.get("content"),
+            "document_title": item["result"].payload.get("document_title"),
         }
-        for result, rerank_score in reranked[:limit]
+        for item in reranked[:limit]
     ]
 
 

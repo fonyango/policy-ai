@@ -7,182 +7,11 @@ from typing import Any
 from policy_ai.generation.generator import generate_answer
 from policy_ai.retrieval.retriever import retrieve
 
-TEST_CASES = [
-    {
-        "question": "What are the requirements for open tendering?",
-        "expected_sections": ["A. Open Tender"],
-        "expected_keywords": [
-            "State portal",
-            "advertising threshold",
-            "seven days",
-            "sections 96, 97, and 98",
-        ],
-        "should_refuse": False,
-        "max_words": 150,
-    },
-    {
-        "question": "When can restricted tendering be used?",
-        "expected_sections": ["D. Restricted Tendering"],
-        "expected_keywords": [
-            "conditions",
-            "section 102",
-            "procurement thresholds",
-            "at least ten persons",
-            "known suppliers",
-        ],
-        "should_refuse": False,
-        "max_words": 150,
-    },
-    {
-        "question": "What is required during preliminary evaluation?",
-        "expected_sections": ["PART VII- BASIC PROCUREMENT RULES"],
-        "expected_keywords": [
-            "eligibility requirements",
-            "required format",
-            "tender security",
-            "duly signed",
-            "required number of copies",
-            "validity period",
-            "required documents",
-        ],
-        "should_refuse": False,
-        "max_words": 150,
-    },
-    {
-        "question": "How should tenders be advertised?",
-        "expected_sections": ["A. Open Tender"],
-        "expected_keywords": [
-            "State portal",
-            "advertising threshold",
-            "Second Schedule",
-        ],
-        "should_refuse": False,
-        "max_words": 120,
-    },
-    {
-        "question": "What is the minimum preparation time for open tenders?",
-        "expected_sections": ["A. Open Tender"],
-        "expected_keywords": [
-            "seven days",
-            "national",
-            "county specific",
-        ],
-        "should_refuse": False,
-        "max_words": 100,
-    },
-    {
-        "question": "What checks are performed during technical evaluation?",
-        "expected_sections": ["PART VII- BASIC PROCUREMENT RULES"],
-        "expected_keywords": [
-            "technical requirements",
-            "goods",
-            "works",
-            "services",
-            "rejected",
-        ],
-        "should_refuse": False,
-        "max_words": 120,
-    },
-    {
-        "question": "How is the evaluated tender price determined?",
-        "expected_sections": ["PART VII- BASIC PROCUREMENT RULES"],
-        "expected_keywords": [
-            "bid price",
-            "minor deviations",
-            "common currency",
-            "exchange rate",
-            "margin of preference",
-            "ranked",
-        ],
-        "should_refuse": False,
-        "max_words": 150,
-    },
-    {
-        "question": "What information must be included in an evaluation report?",
-        "expected_sections": ["PART VII- BASIC PROCUREMENT RULES"],
-        "expected_keywords": [
-            "tenders received",
-            "preliminary evaluation",
-            "technical evaluation",
-            "rejected",
-            "evaluated price",
-            "ranking",
-            "recommendation",
-        ],
-        "should_refuse": False,
-        "max_words": 150,
-    },
-    {
-        "question": "When should a tender be rejected as non-responsive?",
-        "expected_sections": ["PART VII- BASIC PROCUREMENT RULES"],
-        "expected_keywords": [
-            "technical requirements",
-            "major deviation",
-            "miscalculation",
-            "disqualification",
-            "non-responsive",
-        ],
-        "should_refuse": False,
-        "max_words": 120,
-    },
-    {
-        "question": "How should the mode of tender submission be communicated?",
-        "expected_sections": ["PART VII- BASIC PROCUREMENT RULES"],
-        "expected_keywords": [
-            "tender advertisement invitation",
-            "electronically",
-            "manually",
-        ],
-        "should_refuse": False,
-        "max_words": 100,
-    },
-    {
-        "question": "What procurement thresholds apply to restricted tendering?",
-        "expected_sections": ["D. Restricted Tendering"],
-        "expected_keywords": [
-            "Second Schedule",
-            "procurement thresholds",
-        ],
-        "should_refuse": False,
-        "max_words": 120,
-    },
-    {
-        "question": "How many suppliers should be invited for restricted tendering?",
-        "expected_sections": ["D. Restricted Tendering"],
-        "expected_keywords": [
-            "at least ten persons",
-            "known suppliers",
-        ],
-        "should_refuse": False,
-        "max_words": 120,
-    },
-    {
-        "question": "What happens after preliminary evaluation is completed?",
-        "expected_sections": ["PART VII- BASIC PROCUREMENT RULES"],
-        "expected_keywords": [
-            "technical evaluation",
-            "technical requirements",
-            "financial evaluation",
-            "evaluated price",
-        ],
-        "should_refuse": False,
-        "max_words": 120,
-    },
-    {
-        "question": "What is the corporate income tax rate in Kenya?",
-        "expected_sections": [],
-        "expected_keywords": [],
-        "should_refuse": True,
-        "max_words": 60,
-    },
-    {
-        "question": "Who is the current Cabinet Secretary for Health?",
-        "expected_sections": [],
-        "expected_keywords": [],
-        "should_refuse": True,
-        "max_words": 60,
-    },
-]
+TEST_CASES_PATH = Path("data/evaluation/test_cases.json")
+
+
+def load_test_cases() -> list[dict[str, Any]]:
+    return json.loads(TEST_CASES_PATH.read_text(encoding="utf-8"))
 
 
 def evaluate(
@@ -190,7 +19,9 @@ def evaluate(
 ) -> Path:
     results: list[dict[str, Any]] = []
 
-    for case in TEST_CASES:
+    test_cases = load_test_cases()
+
+    for case in test_cases:
         question = case["question"]
 
         start_time = time.perf_counter()

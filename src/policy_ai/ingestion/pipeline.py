@@ -38,7 +38,7 @@ def process_document(pdf_path: str | Path) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
-    result = process_document("../data/raw/procurement_regulations.pdf")
+    result = process_document("data/raw/procument.pdf")
 
     for key, value in result.items():
         print(f"{key}: {value}")

@@ -104,6 +104,15 @@ def evaluate(
                     round(keyword_recall, 4) if keyword_recall is not None else None
                 ),
                 "answer_complete": answer_complete,
+                "retrieved_results": [
+                    {
+                        "section": result["section"],
+                        "rerank_score": round(result["rerank_score"], 4),
+                        "section_score": round(result["section_score"], 4),
+                        "final_score": round(result["score"], 4),
+                    }
+                    for result in retrieved
+                ],
             }
         )
 

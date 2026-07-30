@@ -55,19 +55,25 @@ def retrieve(
 
     client = QdrantClient(url=QDRANT_URL)
 
-    query_filter = None
+    query_filter = models.Filter(
+        must_not=[
+            models.FieldCondition(
+                key="chunk_type",
+                match=models.MatchValue(value="toc"),
+            )
+        ]
+    )
+
     if filename:
         safe_name = Path(filename).name
         source_file = f"{Path(safe_name).stem}_parsed_metadata_chunks.json"
 
-        query_filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="source_file",
-                    match=models.MatchValue(value=source_file),
-                )
-            ]
-        )
+        query_filter.must = [
+            models.FieldCondition(
+                key="source_file",
+                match=models.MatchValue(value=source_file),
+            )
+        ]
 
     results = client.query_points(
         collection_name=collection_name,
@@ -98,8 +104,13 @@ def retrieve(
     pairs = [
         (
             query,
-            f"Section: {result.payload.get('section', '')}\n\n"
-            f"{result.payload.get('content', '')}",
+            (
+                f"Document: {result.payload.get('document_title', '')}\n"
+                f"Section: {result.payload.get('section', '')}\n"
+                f"Pages: {result.payload.get('page_start')}-"
+                f"{result.payload.get('page_end')}\n\n"
+                f"{result.payload.get('content', '')}"
+            ),
         )
         for result in results
     ]
@@ -114,7 +125,7 @@ def retrieve(
             result.payload.get("section", ""),
         )
 
-        final_score = float(rerank_score) + (0.10 * section_score)
+        final_score = float(rerank_score)
 
         reranked.append(
             {
@@ -148,12 +159,11 @@ def retrieve(
 if __name__ == "__main__":
     matches = retrieve(
         "What are the requirements for open tendering?",
-        limit=3,
+        limit=4,
     )
 
     for index, match in enumerate(matches, start=1):
-        print(f"\nResult {index}")
-        print(f"Score: {match['score']:.4f}")
+        print(f"\n--- Result {index} ---")
         print(f"Section: {match['section']}")
-        print(f"Pages: {match['page_start']}-{match['page_end']}")
-        print(match["content"][:500])
+        print(f"Score: {match['score']:.4f}")
+        print(match["content"])

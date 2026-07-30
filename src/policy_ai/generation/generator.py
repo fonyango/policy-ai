@@ -5,7 +5,7 @@ from ollama import chat
 from policy_ai.retrieval.retriever import retrieve
 
 MODEL_NAME = "qwen3:8b"
-MIN_RELEVANCE_SCORE = 0.20
+MIN_RELEVANCE_SCORE = 0.10
 
 
 def _build_context(results: list[dict[str, Any]]) -> str:
@@ -53,9 +53,9 @@ def generate_answer(
             "sources": [],
         }
 
-    top_score = sources[0]["score"]
-
-    sources = [source for source in sources if source["score"] >= top_score * 0.96]
+    sources = [
+        source for source in sources[:3] if source["score"] >= MIN_RELEVANCE_SCORE
+    ]
 
     if not sources:
         return {
@@ -76,7 +76,7 @@ def generate_answer(
                     "Keep the answer under 150 words. "
                     "Separate direct requirements from supporting procedures when necessary. "
                     "Cite every factual claim only as [Source 1], [Source 2], and so on. "
-                    "Never mention section or regulation numbers, even when they appear in the sources. "
+                    "Include relevant section or regulation numbers when they are directly supported by the sources. "
                     "Every sentence containing factual information must end with a [Source X] citation. "
                     "If the sources are insufficient, say so."
                 ),

@@ -76,6 +76,7 @@ def index_document(
                 "chunk_index": chunk["chunk_index"],
                 "content": chunk["content"],
                 "word_count": chunk["word_count"],
+                "chunk_type": chunk.get("chunk_type", "content"),
                 **chunk.get("metadata", {}),
             },
         )
@@ -97,7 +98,7 @@ def index_document(
 
 if __name__ == "__main__":
     indexed_count = index_document(
-        "../data/processed/procurement_regulations_parsed_metadata_chunks_embedded.json"
+        "data/processed/procument_parsed_metadata_chunks_embedded.json"
     )
     print(f"Indexed chunks: {indexed_count}")
 

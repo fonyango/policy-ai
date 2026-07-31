@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from uuid import uuid4
+import re
 
 MAX_WORDS = 800
 SPLIT_SIZE = 600
@@ -29,42 +30,39 @@ def _split_large_text(text: str) -> list[str]:
     return chunks
 
 
+def _split_by_regulation(content: str) -> list[str]:
+    parts = re.split(
+        r"(?=^\d+\.\s)",
+        content,
+        flags=re.MULTILINE,
+    )
+
+    return [part.strip() for part in parts if part.strip()]
+
+
 def _split_section(content: str) -> list[str]:
-    if _count_words(content) <= MAX_WORDS:
-        return [content]
-
-    paragraphs = [
-        paragraph.strip() for paragraph in content.split("\n\n") if paragraph.strip()
-    ]
-
+    regulation_parts = _split_by_regulation(content)
     chunks = []
-    current_paragraphs = []
-    current_word_count = 0
 
-    for paragraph in paragraphs:
-        paragraph_word_count = _count_words(paragraph)
-
-        if paragraph_word_count > MAX_WORDS:
-            if current_paragraphs:
-                chunks.append("\n\n".join(current_paragraphs))
-                current_paragraphs = []
-                current_word_count = 0
-
-            chunks.extend(_split_large_text(paragraph))
-            continue
-
-        if current_word_count + paragraph_word_count > MAX_WORDS:
-            chunks.append("\n\n".join(current_paragraphs))
-            current_paragraphs = []
-            current_word_count = 0
-
-        current_paragraphs.append(paragraph)
-        current_word_count += paragraph_word_count
-
-    if current_paragraphs:
-        chunks.append("\n\n".join(current_paragraphs))
+    for part in regulation_parts:
+        if _count_words(part) <= MAX_WORDS:
+            chunks.append(part)
+        else:
+            chunks.extend(_split_large_text(part))
 
     return chunks
+
+
+def _detect_chunk_type(content: str) -> str:
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+
+    short_lines = sum(len(line.split()) <= 8 for line in lines)
+    numbered_lines = sum(bool(re.match(r"^\d+\.", line)) for line in lines)
+
+    if len(lines) >= 8 and short_lines / len(lines) >= 0.8 and numbered_lines == 0:
+        return "toc"
+
+    return "content"
 
 
 def chunk_document(
@@ -88,13 +86,15 @@ def chunk_document(
             continue
 
         section_chunks = _split_section(content)
-        chunk_count = len(section_chunks)
 
         section_chunks = [
             chunk.strip()
             for chunk in section_chunks
             if _count_words(chunk.strip()) >= MIN_WORDS
         ]
+
+        chunk_count = len(section_chunks)
+
         for index, content in enumerate(section_chunks, start=1):
             chunks.append(
                 {
@@ -109,6 +109,7 @@ def chunk_document(
                     "chunk_count": chunk_count,
                     "content": content,
                     "word_count": _count_words(content),
+                    "chunk_type": _detect_chunk_type(content),
                     "metadata": section.get("metadata", {}),
                 }
             )
@@ -133,15 +134,13 @@ def chunk_document(
 
 
 if __name__ == "__main__":
-    saved_path = chunk_document(
-        "../data/processed/procurement_regulations_parsed_metadata.json"
-    )
+    saved_path = chunk_document("data/processed/procument_parsed_metadata.json")
     print(f"Saved to: {saved_path}")
 
     import json
     from pathlib import Path
 
-    path = Path("../data/processed/procurement_regulations_parsed_metadata_chunks.json")
+    path = Path("data/processed/procument_parsed_metadata_chunks.json")
     data = json.loads(path.read_text(encoding="utf-8"))
 
     chunks = data["chunks"]
@@ -150,3 +149,11 @@ if __name__ == "__main__":
     print("Empty chunks:", sum(not chunk["content"].strip() for chunk in chunks))
     print("Largest chunk:", max(chunk["word_count"] for chunk in chunks))
     print("Smallest chunk:", min(chunk["word_count"] for chunk in chunks))
+
+    for chunk in data["chunks"]:
+        if chunk["section"] == "PART VII- BASIC PROCUREMENT RULES":
+            print("\n---")
+            print("Chunk:", chunk["chunk_index"], "/", chunk["chunk_count"])
+            print("Type:", chunk["chunk_type"])
+            print("Words:", chunk["word_count"])
+            print("Content:", chunk["content"])

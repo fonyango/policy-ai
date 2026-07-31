@@ -1,10 +1,14 @@
 import re
+import os
 from pathlib import Path
 from typing import Any
 
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient, models
 from sentence_transformers import CrossEncoder, SentenceTransformer
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DENSE_MODEL_NAME = "BAAI/bge-m3"
 SPARSE_MODEL_NAME = "Qdrant/bm25"
@@ -14,7 +18,7 @@ DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 
 COLLECTION_NAME = "policy_documents"
-QDRANT_URL = "http://localhost:6333"
+QDRANT_URL = os.getenv("QDRANT_URL")
 
 
 dense_model = SentenceTransformer(DENSE_MODEL_NAME)
@@ -33,6 +37,62 @@ def _section_match(query: str, section: str) -> float:
     )
 
     return matches / max(len(query_terms), 1)
+
+
+def expand_with_neighbors(
+    source: dict[str, Any],
+    collection_name: str = COLLECTION_NAME,
+) -> list[dict[str, Any]]:
+    chunk_index = source.get("chunk_index")
+
+    if chunk_index is None:
+        return [source]
+
+    client = QdrantClient(url=QDRANT_URL)
+
+    records, _ = client.scroll(
+        collection_name=collection_name,
+        scroll_filter=models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="document_id",
+                    match=models.MatchValue(value=source["document_id"]),
+                ),
+                models.FieldCondition(
+                    key="section_id",
+                    match=models.MatchValue(value=source["section_id"]),
+                ),
+                models.FieldCondition(
+                    key="chunk_index",
+                    match=models.MatchAny(
+                        any=[
+                            chunk_index - 1,
+                            chunk_index,
+                            chunk_index + 1,
+                        ]
+                    ),
+                ),
+            ]
+        ),
+        limit=3,
+        with_payload=True,
+        with_vectors=False,
+    )
+
+    records.sort(key=lambda record: record.payload["chunk_index"])
+
+    return [
+        {
+            **source,
+            "chunk_index": record.payload["chunk_index"],
+            "section": record.payload["section"],
+            "page_start": record.payload["page_start"],
+            "page_end": record.payload["page_end"],
+            "content": record.payload["content"],
+            "document_title": record.payload["document_title"],
+        }
+        for record in records
+    ]
 
 
 def retrieve(
@@ -146,6 +206,9 @@ def retrieve(
             "score": item["final_score"],
             "rerank_score": item["rerank_score"],
             "section_score": item["section_score"],
+            "document_id": item["result"].payload.get("document_id"),
+            "section_id": item["result"].payload.get("section_id"),
+            "chunk_index": item["result"].payload.get("chunk_index"),
             "section": item["result"].payload.get("section"),
             "page_start": item["result"].payload.get("page_start"),
             "page_end": item["result"].payload.get("page_end"),

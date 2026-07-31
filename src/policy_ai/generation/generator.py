@@ -3,9 +3,10 @@ from typing import Any
 from ollama import chat
 
 from policy_ai.retrieval.retriever import retrieve
+from policy_ai.retrieval.retriever import expand_with_neighbors, retrieve
 
 MODEL_NAME = "qwen3:8b"
-MIN_RELEVANCE_SCORE = 0.10
+MIN_RELEVANCE_SCORE = 0.15
 
 
 def _build_context(results: list[dict[str, Any]]) -> str:
@@ -53,9 +54,8 @@ def generate_answer(
             "sources": [],
         }
 
-    sources = [
-        source for source in sources[:3] if source["score"] >= MIN_RELEVANCE_SCORE
-    ]
+    top_source = sources[0]
+    sources = expand_with_neighbors(top_source)
 
     if not sources:
         return {

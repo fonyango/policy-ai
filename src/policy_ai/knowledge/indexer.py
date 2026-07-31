@@ -1,11 +1,16 @@
 import json
 from pathlib import Path
+import os
 
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient, models
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 COLLECTION_NAME = "policy_documents"
-QDRANT_URL = "http://localhost:6333"
+QDRANT_URL = os.getenv("QDRANT_URL")
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 SPARSE_MODEL_NAME = "Qdrant/bm25"

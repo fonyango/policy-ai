@@ -2,259 +2,101 @@
 
 ## Overview
 
-PolicyAI is designed as a modular document intelligence pipeline. Each stage has one responsibility and produces inspectable output. This makes retrieval failures traceable from the final answer back to the original PDF.
+PolicyAI is a modular RAG system for policy, legal, and regulatory documents. Each stage is inspectable so errors can be traced from the final answer back to the original PDF.
 
-## High-Level Flow
+## Flow
 
 ```text
-User Upload
+Authenticated User
     ↓
-FastAPI Upload Endpoint
+React UI
     ↓
-PDF saved to data/raw/
+FastAPI
     ↓
-Docling Conversion
-    ├── Markdown
-    └── Structured JSON
+Authorization Check
     ↓
-Parser
+PDF Ingestion with Docling
     ↓
-Metadata Enrichment
+Parsing and Metadata Enrichment
     ↓
-Section-Aware Chunking
+Regulation-Aware Chunking
     ↓
-Dense Embedding Generation
+Dense and Sparse Embeddings
     ↓
-Sparse BM25 Representation
-    ↓
-Qdrant Index
-    ↓
-Hybrid Retrieval
+Qdrant Hybrid Retrieval
     ↓
 Cross-Encoder Reranking
     ↓
-Evidence Filtering
+Neighbouring-Chunk Expansion
     ↓
 Qwen Grounded Generation
     ↓
-FastAPI JSON or HTMX Response
+Answer with Citations
 ```
 
-## Components
+## Main Components
 
-### 1. Ingestion
+### Ingestion
 
-The ingestion layer accepts policy or regulatory PDFs and converts them into structured representations.
-
-Responsibilities:
-
-- validate PDF input
-- preserve the uploaded source file
-- extract text and tables with Docling
-- write Markdown for human inspection
-- write structured JSON for downstream processing
-
-Primary module:
+Validates PDFs, stores the source file, and converts documents into Markdown and structured JSON.
 
 ```text
-src/policy_ai/ingestion/converter.py
+src/policy_ai/ingestion/
 ```
 
-### 2. Parsing
+### Chunking
 
-The parser converts Docling-specific output into an internal document schema.
-
-The internal schema includes:
-
-- document ID
-- title
-- source file
-- sections
-- page ranges
-- section content
-
-Primary module:
-
-```text
-src/policy_ai/ingestion/parser.py
-```
-
-### 3. Metadata Enrichment
-
-The metadata stage adds retrieval-relevant information without relying on an LLM.
-
-Current metadata includes:
-
-- document title
-- page range
-- word count
-- detected dates
-- version placeholder
-- reference placeholders
-
-Primary module:
-
-```text
-src/policy_ai/ingestion/metadata.py
-```
-
-### 4. Chunking
-
-PolicyAI uses section-aware chunking rather than arbitrary character windows.
-
-Current rules:
-
-- preserve section boundaries
-- keep sections below the maximum size intact
-- split long sections by paragraph
-- split oversized paragraphs with controlled overlap
-- remove empty chunks
-
-Primary module:
+Preserves section and regulation boundaries, filters table-of-contents chunks, and splits oversized content safely.
 
 ```text
 src/policy_ai/ingestion/chunker.py
 ```
 
-Planned improvement:
+### Indexing
 
-- split legal documents by regulation or clause number
-- attach regulation number and topic metadata to each chunk
-- preserve tables as independent retrieval units
-
-### 5. Embeddings
-
-Each chunk is embedded using BGE-M3.
-
-The embedding input combines:
-
-```text
-section heading + chunk content
-```
-
-Vectors are normalized for cosine similarity.
-
-Primary module:
-
-```text
-src/policy_ai/ingestion/embedder.py
-```
-
-### 6. Indexing
-
-Qdrant stores named vectors and payload metadata.
-
-Each point contains:
-
-- dense vector
-- sparse BM25 vector
-- document ID
-- source filename
-- section ID
-- section heading
-- page range
-- content
-- word count
-
-Primary module:
+Stores dense vectors, sparse BM25 vectors, document metadata, ownership data, page ranges, and chunk content in Qdrant.
 
 ```text
 src/policy_ai/knowledge/indexer.py
 ```
 
-### 7. Retrieval
+### Retrieval
 
-Retrieval combines dense semantic search and sparse lexical search.
-
-Process:
-
-1. Embed the query with BGE-M3.
-2. Generate a BM25 sparse query vector.
-3. Query both vector spaces in Qdrant.
-4. Fuse rankings with reciprocal rank fusion.
-5. Rerank candidates with BGE reranker.
-6. Apply a small section-heading match bonus.
-7. Return the best evidence.
-
-Primary module:
+Combines dense and sparse search, reciprocal rank fusion, reranking, ownership filters, document filters, and neighbouring-chunk expansion.
 
 ```text
 src/policy_ai/retrieval/retriever.py
 ```
 
-Document-specific filtering is supported through Qdrant payload filters.
+### Generation
 
-### 8. Grounded Generation
-
-The generator receives only retrieved and filtered evidence.
-
-Generation rules include:
-
-- answer only from supplied sources
-- cite factual claims as `[Source X]`
-- keep answers concise
-- refuse when evidence is insufficient
-- avoid unsupported external knowledge
-
-Qwen runs locally through Ollama with thinking disabled for faster responses.
-
-Primary module:
+Uses only retrieved evidence, cites factual claims, keeps answers concise, and refuses unsupported questions.
 
 ```text
 src/policy_ai/generation/generator.py
 ```
 
-### 9. Follow-Up Questions
+### Authentication and Authorization
 
-A lightweight query rewriter converts context-dependent follow-up questions into standalone retrieval queries.
-
-Only recent conversation turns are used to resolve references. Chat history is not treated as evidence.
-
-Primary module:
+FastAPI manages JWT authentication, user roles, document ownership, and protected endpoints.
 
 ```text
-src/policy_ai/generation/query_rewriter.py
+src/policy_ai/auth/
 ```
 
-### 10. API and User Interface
+### Interface
 
-FastAPI exposes JSON endpoints and serves an HTMX interface.
-
-The interface supports:
-
-- PDF upload
-- document listing
-- deletion
-- document selection
-- question answering
-- source display
-- loading indicators
-- lightweight session history
-
-Primary module:
+React provides authentication, document upload, document selection, question answering, citations, and admin-only deletion controls.
 
 ```text
-src/policy_ai/api/main.py
+frontend/src/
 ```
 
 ## Design Principles
 
-### Inspectability
-
-Every stage writes output that can be inspected manually. This makes it possible to identify whether an error originated in extraction, parsing, chunking, retrieval, reranking, or generation.
-
-### Modularity
-
-The parser, embedding model, vector database, reranker, and LLM can be replaced independently.
-
-### Precision First
-
-The system combines semantic and lexical retrieval because regulatory questions often require both natural-language matching and exact legal terminology.
-
-### Grounding
-
-The LLM is not used as the source of truth. Retrieved document evidence remains authoritative.
-
-### Refusal Over Guessing
-
-When retrieval confidence is too low, the system returns an explicit insufficient-evidence response.
+- **Inspectability:** Every pipeline stage can be reviewed independently.
+- **Modularity:** Models and storage components can be replaced separately.
+- **Precision first:** Dense and lexical retrieval are combined.
+- **Grounding:** Retrieved documents remain the source of truth.
+- **Authorization:** Users can access only permitted documents.
+- **Refusal over guessing:** Weak evidence produces an explicit refusal.

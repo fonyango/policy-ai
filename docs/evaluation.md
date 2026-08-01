@@ -1,81 +1,34 @@
 # Evaluation Results
 
-## Purpose
+## Overview
 
-The evaluation measures whether PolicyAI retrieves the correct evidence, produces cited answers, refuses unsupported questions, respects response-length limits, and covers expected answer content.
+PolicyAI is evaluated on retrieval quality, citation use, unsupported-question refusal, response length, and answer completeness.
 
-## Current Test Set
+The current benchmark contains 15 procurement-regulation questions:
 
-The current benchmark contains 15 questions:
-
-- 13 supported questions based on the indexed procurement regulations
-- 2 unsupported questions designed to test refusal behavior
-
-Question types include:
-
-- open tendering requirements
-- restricted tendering
-- preliminary evaluation
-- technical evaluation
-- financial evaluation
-- evaluation reports
-- exact procedural questions
-- unsupported tax and current-office-holder questions
+- 13 supported questions
+- 2 unsupported questions
 
 ## Latest Results
 
-| Metric                             |        Result |
-| ---------------------------------- | ------------: |
-| Total questions                    |            15 |
-| Top-1 retrieval accuracy           |          100% |
-| Top-5 retrieval accuracy           |          100% |
-| Citation rate                      |          100% |
-| Unsupported-query refusal accuracy |          100% |
-| Word-limit compliance              |          100% |
-| Answer completeness                |         84.6% |
-| Average response time              | 10.96 seconds |
-| Average answer length              |      66 words |
+| Metric                   | Result |
+| ------------------------ | -----: |
+| Top-1 retrieval accuracy |   100% |
+| Top-5 retrieval accuracy |   100% |
+| Citation rate            |   100% |
+| Refusal accuracy         |   100% |
+| Word-limit compliance    |   100% |
+| Answer completeness      |  92.3% |
 
-## Metric Definitions
+## What the Metrics Mean
 
-### Top-1 Retrieval Accuracy
+- **Top-1:** The expected section ranked first.
+- **Top-5:** The expected section appeared in the first five results.
+- **Citation rate:** Supported answers included source citations.
+- **Refusal accuracy:** Unsupported questions were rejected correctly.
+- **Word-limit compliance:** Answers stayed within the required length.
+- **Answer completeness:** Answers covered the expected key points.
 
-The proportion of supported questions where the expected section ranked first.
+## Current Assessment
 
-### Top-5 Retrieval Accuracy
-
-The proportion of supported questions where the expected section appeared within the first five results.
-
-### Citation Rate
-
-The proportion of generated supported answers containing at least one `[Source X]` citation.
-
-### Refusal Accuracy
-
-The proportion of questions where the system correctly answered supported questions and refused unsupported questions.
-
-### Word-Limit Compliance
-
-The proportion of answers that remained within the test-specific word limit.
-
-### Answer Completeness
-
-The proportion of supported answers that matched at least 60% of expected answer keywords.
-
-### Response Time
-
-Elapsed time for retrieval and answer generation during evaluation.
-
-## Strong Results
-
-The current system performs well in:
-
-- locating the correct document section
-- rejecting unsupported questions
-- producing concise answers
-- adding source citations consistently
-- answering direct procedural questions
-
-## Known Evaluation Weakness
-
-The current metrics show that PolicyAI is a strong MVP but requires further improvements. The main weakness is answer completeness for broad sections containing several legal provisions.
+PolicyAI retrieves the correct evidence consistently, cites its sources, and refuses unsupported questions. The main remaining weakness is completeness for broad questions that require several provisions from the same section.

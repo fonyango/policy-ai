@@ -2,7 +2,13 @@ import { useState } from "react";
 
 import { deleteDocument } from "../api";
 
-function DocumentList({ documents, loading, error, onDelete }) {
+function DocumentList({
+    documents,
+    loading,
+    error,
+    onDelete,
+    canDelete = false,
+}) {
     const [deleting, setDeleting] = useState("");
     const [deleteError, setDeleteError] = useState("");
 
@@ -42,13 +48,17 @@ function DocumentList({ documents, loading, error, onDelete }) {
                         <li key={document.filename}>
                             <span>{document.filename}</span>
 
-                            <button
-                                type="button"
-                                disabled={deleting === document.filename}
-                                onClick={() => handleDelete(document.filename)}
-                            >
-                                {deleting === document.filename ? "Deleting..." : "Delete"}
-                            </button>
+                            {canDelete && (
+                                <button
+                                    type="button"
+                                    disabled={deleting === document.filename}
+                                    onClick={() => handleDelete(document.filename)}
+                                >
+                                    {deleting === document.filename
+                                        ? "Deleting..."
+                                        : "Delete"}
+                                </button>
+                            )}
                         </li>
                     ))}
                 </ul>

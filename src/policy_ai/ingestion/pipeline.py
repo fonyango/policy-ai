@@ -9,7 +9,10 @@ from policy_ai.ingestion.parser import parse_document
 from policy_ai.knowledge.indexer import index_document
 
 
-def process_document(pdf_path: str | Path) -> dict[str, Any]:
+def process_document(
+    input_path: str | Path,
+    owner_id: int,
+) -> dict[str, Any]:
     pdf_path = Path(pdf_path)
 
     if not pdf_path.exists():
@@ -23,7 +26,10 @@ def process_document(pdf_path: str | Path) -> dict[str, Any]:
     metadata_path = enrich_metadata(parsed_path)
     chunks_path = chunk_document(metadata_path)
     embedded_path = embed_document(chunks_path)
-    indexed_chunks = index_document(embedded_path)
+    indexed_chunks = index_document(
+        embedded_path,
+        owner_id=owner_id,
+    )
 
     return {
         "source": str(pdf_path),
@@ -39,6 +45,11 @@ def process_document(pdf_path: str | Path) -> dict[str, Any]:
 
 if __name__ == "__main__":
     result = process_document("data/raw/procument.pdf")
+
+    result = process_document(
+        saved_path="data/raw/procument.pdf",
+        owner_id=1,
+    )
 
     for key, value in result.items():
         print(f"{key}: {value}")

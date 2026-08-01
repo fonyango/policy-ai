@@ -18,6 +18,7 @@ SPARSE_MODEL_NAME = "Qdrant/bm25"
 
 def index_document(
     embedded_path: str | Path,
+    owner_id: int,
     collection_name: str = COLLECTION_NAME,
 ) -> int:
     embedded_path = Path(embedded_path)
@@ -86,6 +87,7 @@ def index_document(
                 ),
             },
             payload={
+                "owner_id": owner_id,
                 "document_id": chunk["document_id"],
                 "document_title": chunk["document_title"],
                 "source_file": document["source_file"],
@@ -118,7 +120,8 @@ def index_document(
 
 if __name__ == "__main__":
     indexed_count = index_document(
-        "data/processed/procument_parsed_metadata_chunks_embedded.json"
+        "../data/processed/procurement_regulations_parsed_metadata_chunks_embedded.json",
+        owner_id=1,
     )
     print(f"Indexed chunks: {indexed_count}")
 

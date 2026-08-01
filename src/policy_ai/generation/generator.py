@@ -1,11 +1,20 @@
 from typing import Any
 
 from ollama import chat
-
+import re
 from policy_ai.retrieval.retriever import expand_with_neighbors, retrieve
 
 MODEL_NAME = "qwen3:8b"
 MIN_RELEVANCE_SCORE = 0.15
+
+
+def _display_document_title(title: str) -> str:
+    return re.sub(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
 
 
 def _build_context(results: list[dict[str, Any]]) -> str:
@@ -53,7 +62,8 @@ def generate_answer(
     query: str,
     limit: int = 5,
     sources: list[dict[str, Any]] | None = None,
-    filename: str | None = None,
+    source_file: str | None = None,
+    owner_id: int | None = None,
 ) -> dict[str, Any]:
     query = query.strip()
 
@@ -64,7 +74,8 @@ def generate_answer(
         sources = retrieve(
             query=query,
             limit=limit,
-            filename=filename,
+            source_file=source_file,
+            owner_id=owner_id,
         )
 
     if not sources:
@@ -141,7 +152,7 @@ def generate_answer(
 
         formatted_sources.append(
             {
-                "document_title": source["document_title"],
+                "document_title": _display_document_title(source["document_title"]),
                 "section": source["section"],
                 "page_start": min(item["page_start"] for item in matching_sources),
                 "page_end": max(item["page_end"] for item in matching_sources),

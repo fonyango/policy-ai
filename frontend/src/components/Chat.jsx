@@ -162,10 +162,7 @@ function Chat({ documents }) {
                         <option value="">All documents</option>
 
                         {documents.map((document) => (
-                            <option
-                                key={document.filename}
-                                value={document.filename}
-                            >
+                            <option key={document.id} value={document.id}>
                                 {document.filename}
                             </option>
                         ))}

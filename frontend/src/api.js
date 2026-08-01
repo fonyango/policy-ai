@@ -133,9 +133,9 @@ export async function uploadDocument(file) {
   return response.json();
 }
 
-export async function deleteDocument(filename) {
+export async function deleteDocument(documentId) {
   const response = await apiRequest(
-    `/documents/${encodeURIComponent(filename)}`,
+    `/documents/${encodeURIComponent(documentId)}`,
     {
       method: "DELETE",
     }
@@ -150,7 +150,7 @@ export async function deleteDocument(filename) {
   return response.json();
 }
 
-export async function askQuestion(question, filename = null, limit = 5) {
+export async function askQuestion(question, documentId = null, limit = 5) {
   const response = await apiRequest("/ask", {
     method: "POST",
     headers: {
@@ -158,7 +158,7 @@ export async function askQuestion(question, filename = null, limit = 5) {
     },
     body: JSON.stringify({
       question,
-      filename,
+      document_id: documentId,
       limit,
     }),
   });

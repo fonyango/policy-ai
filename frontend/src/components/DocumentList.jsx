@@ -12,12 +12,12 @@ function DocumentList({
     const [deleting, setDeleting] = useState("");
     const [deleteError, setDeleteError] = useState("");
 
-    async function handleDelete(filename) {
+    async function handleDelete(documentId) {
         try {
-            setDeleting(filename);
+            setDeleting(documentId);
             setDeleteError("");
 
-            await deleteDocument(filename);
+            await deleteDocument(documentId);
             await onDelete();
         } catch (err) {
             setDeleteError(err.message);
@@ -45,16 +45,16 @@ function DocumentList({
             ) : (
                 <ul>
                     {documents.map((document) => (
-                        <li key={document.filename}>
+                        <li key={document.id}>
                             <span>{document.filename}</span>
 
                             {canDelete && (
                                 <button
                                     type="button"
-                                    disabled={deleting === document.filename}
-                                    onClick={() => handleDelete(document.filename)}
+                                    disabled={deleting === document.id}
+                                    onClick={() => handleDelete(document.id)}
                                 >
-                                    {deleting === document.filename
+                                    {deleting === document.id
                                         ? "Deleting..."
                                         : "Delete"}
                                 </button>

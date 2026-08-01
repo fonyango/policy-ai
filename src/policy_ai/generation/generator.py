@@ -2,7 +2,6 @@ from typing import Any
 
 from ollama import chat
 
-from policy_ai.retrieval.retriever import retrieve
 from policy_ai.retrieval.retriever import expand_with_neighbors, retrieve
 
 MODEL_NAME = "qwen3:8b"

@@ -13,3 +13,5 @@ wheels/
 
 data/
 .DS_Store
+
+*.db

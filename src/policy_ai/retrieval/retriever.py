@@ -1,12 +1,12 @@
-import re
 import os
+import re
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient, models
 from sentence_transformers import CrossEncoder, SentenceTransformer
-from dotenv import load_dotenv
 
 load_dotenv()
 

@@ -1,7 +1,7 @@
 import json
+import re
 from pathlib import Path
 from uuid import uuid4
-import re
 
 MAX_WORDS = 800
 SPLIT_SIZE = 600

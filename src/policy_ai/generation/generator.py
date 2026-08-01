@@ -10,15 +10,41 @@ MIN_RELEVANCE_SCORE = 0.15
 
 
 def _build_context(results: list[dict[str, Any]]) -> str:
+    grouped: dict[tuple[str, str], dict[str, Any]] = {}
+
+    for result in results:
+        key = (
+            result["document_title"],
+            result["section"],
+        )
+
+        if key not in grouped:
+            grouped[key] = {
+                **result,
+                "contents": [],
+            }
+
+        grouped[key]["contents"].append(result["content"])
+        grouped[key]["page_start"] = min(
+            grouped[key]["page_start"],
+            result["page_start"],
+        )
+        grouped[key]["page_end"] = max(
+            grouped[key]["page_end"],
+            result["page_end"],
+        )
+
     sections = []
 
-    for index, result in enumerate(results, start=1):
+    for index, result in enumerate(grouped.values(), start=1):
+        content = "\n\n".join(result["contents"])
+
         sections.append(
             f"[Source {index}]\n"
             f"Document: {result['document_title']}\n"
             f"Section: {result['section']}\n"
             f"Pages: {result['page_start']}-{result['page_end']}\n"
-            f"Content:\n{result['content']}"
+            f"Content:\n{content}"
         )
 
     return "\n\n".join(sections)
@@ -93,16 +119,36 @@ def generate_answer(
         },
     )
 
-    formatted_sources = [
-        {
-            "document_title": source["document_title"],
-            "section": source["section"],
-            "page_start": source["page_start"],
-            "page_end": source["page_end"],
-            "score": round(source["score"], 4),
-        }
-        for source in sources
-    ]
+    formatted_sources = []
+    seen_sources = set()
+
+    for source in sources:
+        source_key = (
+            source["document_title"],
+            source["section"],
+        )
+
+        if source_key in seen_sources:
+            continue
+
+        seen_sources.add(source_key)
+
+        matching_sources = [
+            item
+            for item in sources
+            if item["document_title"] == source["document_title"]
+            and item["section"] == source["section"]
+        ]
+
+        formatted_sources.append(
+            {
+                "document_title": source["document_title"],
+                "section": source["section"],
+                "page_start": min(item["page_start"] for item in matching_sources),
+                "page_end": max(item["page_end"] for item in matching_sources),
+                "score": round(source["score"], 4),
+            }
+        )
 
     return {
         "answer": response.message.content,

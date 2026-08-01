@@ -37,22 +37,37 @@ def index_document(
 
     client = QdrantClient(url=QDRANT_URL)
 
-    if client.collection_exists(collection_name):
-        client.delete_collection(collection_name)
+    if not client.collection_exists(collection_name):
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config={
+                DENSE_VECTOR_NAME: models.VectorParams(
+                    size=vector_size,
+                    distance=models.Distance.COSINE,
+                )
+            },
+            sparse_vectors_config={
+                SPARSE_VECTOR_NAME: models.SparseVectorParams(
+                    modifier=models.Modifier.IDF,
+                )
+            },
+        )
 
-    client.create_collection(
+    document_id = chunks[0]["document_id"]
+
+    client.delete(
         collection_name=collection_name,
-        vectors_config={
-            DENSE_VECTOR_NAME: models.VectorParams(
-                size=vector_size,
-                distance=models.Distance.COSINE,
+        points_selector=models.FilterSelector(
+            filter=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="document_id",
+                        match=models.MatchValue(value=document_id),
+                    )
+                ]
             )
-        },
-        sparse_vectors_config={
-            SPARSE_VECTOR_NAME: models.SparseVectorParams(
-                modifier=models.Modifier.IDF,
-            )
-        },
+        ),
+        wait=True,
     )
 
     texts = [f"{chunk['section']}\n\n{chunk['content']}" for chunk in chunks]

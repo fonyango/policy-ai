@@ -1,27 +1,36 @@
+import os
 from pathlib import Path
 from shutil import copyfileobj
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient, models
 
+from policy_ai.auth.dependencies import get_current_user, require_admin
+from policy_ai.auth.models import User
+from policy_ai.auth.routes import router as auth_router
 from policy_ai.generation.generator import generate_answer
 from policy_ai.ingestion.pipeline import process_document
 
-QDRANT_URL = "http://localhost:6333"
-COLLECTION_NAME = "policy_documents"
+load_dotenv()
+
+QDRANT_URL = os.getenv("QDRANT_URL")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME")
 
 app = FastAPI(
     title="PolicyAI",
     version="0.1.0",
 )
 
+app.include_router(auth_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
+        os.getenv("FRONTEND_URL"),
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -93,7 +102,10 @@ def health_check() -> dict[str, str]:
 
 
 @app.post("/documents", response_model=IngestResponse)
-def ingest_document(file: UploadFile = File(...)) -> IngestResponse:
+def ingest_document(
+    current_user: Annotated[User, Depends(get_current_user)],
+    file: UploadFile = File(...),
+) -> IngestResponse:
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=400,
@@ -119,7 +131,9 @@ def ingest_document(file: UploadFile = File(...)) -> IngestResponse:
 
 
 @app.get("/documents", response_model=list[DocumentSummary])
-def list_documents() -> list[DocumentSummary]:
+def list_documents(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> list[DocumentSummary]:
     raw_dir = Path("data/raw")
     processed_dir = Path("data/processed")
 
@@ -149,7 +163,10 @@ def list_documents() -> list[DocumentSummary]:
 
 
 @app.delete("/documents/{filename}")
-def delete_document(filename: str) -> dict[str, Any]:
+def delete_document(
+    filename: str,
+    current_user: Annotated[User, Depends(require_admin)],
+) -> dict[str, Any]:
     safe_name = Path(filename).name
     stem = Path(safe_name).stem
 
@@ -200,7 +217,10 @@ def delete_document(filename: str) -> dict[str, Any]:
 
 
 @app.post("/ask", response_model=AskResponse)
-def ask(request: AskRequest) -> AskResponse:
+def ask(
+    request: AskRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> AskResponse:
     try:
         result = generate_answer(
             query=request.question,

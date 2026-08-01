@@ -99,7 +99,8 @@ def retrieve(
     query: str,
     limit: int = 5,
     collection_name: str = COLLECTION_NAME,
-    filename: str | None = None,
+    source_file: str | None = None,
+    owner_id: int | None = None,
 ) -> list[dict[str, Any]]:
     query = query.strip()
 
@@ -115,25 +116,33 @@ def retrieve(
 
     client = QdrantClient(url=QDRANT_URL)
 
+    must_conditions = []
+
+    if source_file:
+        must_conditions.append(
+            models.FieldCondition(
+                key="source_file",
+                match=models.MatchValue(value=source_file),
+            )
+        )
+
+    if owner_id is not None:
+        must_conditions.append(
+            models.FieldCondition(
+                key="owner_id",
+                match=models.MatchValue(value=owner_id),
+            )
+        )
+
     query_filter = models.Filter(
+        must=must_conditions or None,
         must_not=[
             models.FieldCondition(
                 key="chunk_type",
                 match=models.MatchValue(value="toc"),
             )
-        ]
+        ],
     )
-
-    if filename:
-        safe_name = Path(filename).name
-        source_file = f"{Path(safe_name).stem}_parsed_metadata_chunks.json"
-
-        query_filter.must = [
-            models.FieldCondition(
-                key="source_file",
-                match=models.MatchValue(value=source_file),
-            )
-        ]
 
     results = client.query_points(
         collection_name=collection_name,

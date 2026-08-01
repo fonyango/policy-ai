@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from policy_ai.auth.models import User
 from policy_ai.config import settings
 from policy_ai.database.base import Base
+from policy_ai.knowledge.models import Document
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

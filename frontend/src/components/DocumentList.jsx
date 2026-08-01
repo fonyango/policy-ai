@@ -2,16 +2,22 @@ import { useState } from "react";
 
 import { deleteDocument } from "../api";
 
-function DocumentList({ documents, loading, error, onDelete }) {
+function DocumentList({
+    documents,
+    loading,
+    error,
+    onDelete,
+    canDelete = false,
+}) {
     const [deleting, setDeleting] = useState("");
     const [deleteError, setDeleteError] = useState("");
 
-    async function handleDelete(filename) {
+    async function handleDelete(documentId) {
         try {
-            setDeleting(filename);
+            setDeleting(documentId);
             setDeleteError("");
 
-            await deleteDocument(filename);
+            await deleteDocument(documentId);
             await onDelete();
         } catch (err) {
             setDeleteError(err.message);
@@ -39,16 +45,20 @@ function DocumentList({ documents, loading, error, onDelete }) {
             ) : (
                 <ul>
                     {documents.map((document) => (
-                        <li key={document.filename}>
+                        <li key={document.id}>
                             <span>{document.filename}</span>
 
-                            <button
-                                type="button"
-                                disabled={deleting === document.filename}
-                                onClick={() => handleDelete(document.filename)}
-                            >
-                                {deleting === document.filename ? "Deleting..." : "Delete"}
-                            </button>
+                            {canDelete && (
+                                <button
+                                    type="button"
+                                    disabled={deleting === document.id}
+                                    onClick={() => handleDelete(document.id)}
+                                >
+                                    {deleting === document.id
+                                        ? "Deleting..."
+                                        : "Delete"}
+                                </button>
+                            )}
                         </li>
                     ))}
                 </ul>

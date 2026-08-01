@@ -13,7 +13,7 @@ def process_document(
     input_path: str | Path,
     owner_id: int,
 ) -> dict[str, Any]:
-    pdf_path = Path(pdf_path)
+    pdf_path = Path(input_path)
 
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF not found: {pdf_path}")
@@ -44,10 +44,9 @@ def process_document(
 
 
 if __name__ == "__main__":
-    result = process_document("data/raw/procument.pdf")
 
     result = process_document(
-        saved_path="data/raw/procument.pdf",
+        input_path="data/raw/procument.pdf",
         owner_id=1,
     )
 

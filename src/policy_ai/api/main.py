@@ -131,7 +131,8 @@ def ingest_document(
     with saved_path.open("wb") as destination:
         copyfileobj(file.file, destination)
 
-    result = process_document(saved_path)
+    owner_id = None if current_user.role == UserRole.ADMIN.value else current_user.id
+    result = process_document(saved_path, owner_id)
 
     source_file = f"{saved_path.stem}_parsed_metadata_chunks.json"
 

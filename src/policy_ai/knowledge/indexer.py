@@ -87,10 +87,12 @@ def index_document(
                 ),
             },
             payload={
-                "owner_id": owner_id,
                 "document_id": chunk["document_id"],
                 "document_title": chunk["document_title"],
-                "source_file": document["source_file"],
+                "source_file": chunk.get(
+                    "source_file",
+                    Path(embedded_path).name.replace("_embedded.json", ".json"),
+                ),
                 "section_id": chunk["section_id"],
                 "section": chunk["section"],
                 "page_start": chunk["page_start"],
@@ -99,7 +101,12 @@ def index_document(
                 "content": chunk["content"],
                 "word_count": chunk["word_count"],
                 "chunk_type": chunk.get("chunk_type", "content"),
-                **chunk.get("metadata", {}),
+                "page_range": chunk.get("page_range"),
+                "effective_dates": chunk.get("effective_dates", []),
+                "contains_table": chunk.get("contains_table", False),
+                "references": chunk.get("references", []),
+                "version": chunk.get("version", "original"),
+                "owner_id": owner_id,
             },
         )
         for chunk, sparse_embedding in zip(
@@ -119,19 +126,14 @@ def index_document(
 
 
 if __name__ == "__main__":
-    indexed_count = index_document(
-        "../data/processed/procurement_regulations_parsed_metadata_chunks_embedded.json",
-        owner_id=1,
-    )
-    print(f"Indexed chunks: {indexed_count}")
+    client = QdrantClient(url=QDRANT_URL)
 
-    from qdrant_client import QdrantClient
-
-    client = QdrantClient(url="http://localhost:6333")
-
-    result = client.count(
-        collection_name="policy_documents",
-        exact=True,
+    stored_points, _ = client.scroll(
+        collection_name=COLLECTION_NAME,
+        limit=5,
+        with_payload=True,
+        with_vectors=False,
     )
 
-    print(result.count)
+    for point in stored_points:
+        print(point.payload)

@@ -7,7 +7,6 @@ function DocumentList({
     loading,
     error,
     onDelete,
-    canDelete = false,
 }) {
     const [deleting, setDeleting] = useState("");
     const [deleteError, setDeleteError] = useState("");
@@ -47,18 +46,15 @@ function DocumentList({
                     {documents.map((document) => (
                         <li key={document.id}>
                             <span>{document.filename}</span>
-
-                            {canDelete && (
-                                <button
-                                    type="button"
-                                    disabled={deleting === document.id}
-                                    onClick={() => handleDelete(document.id)}
-                                >
-                                    {deleting === document.id
-                                        ? "Deleting..."
-                                        : "Delete"}
-                                </button>
-                            )}
+                            <button
+                                type="button"
+                                disabled={deleting === document.id}
+                                onClick={() => handleDelete(document.id)}
+                            >
+                                {deleting === document.id
+                                    ? "Deleting..."
+                                    : "Delete"}
+                            </button>
                         </li>
                     ))}
                 </ul>

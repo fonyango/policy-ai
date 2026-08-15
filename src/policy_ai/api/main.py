@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from policy_ai.auth.models import User, UserRole
 
-from policy_ai.auth.dependencies import get_current_user, require_admin
+from policy_ai.auth.dependencies import get_current_user
 from policy_ai.auth.models import User
 from policy_ai.auth.routes import router as auth_router
 from policy_ai.database.session import get_db
@@ -131,27 +131,23 @@ def ingest_document(
     with saved_path.open("wb") as destination:
         copyfileobj(file.file, destination)
 
-    owner_id = None if current_user.role == UserRole.ADMIN.value else current_user.id
-    result = process_document(saved_path, owner_id)
+    owner_id = current_user.id
 
-    source_file = f"{saved_path.stem}_parsed_metadata_chunks.json"
-
-    existing_document = db.scalar(
-        select(Document).where(Document.source_file == source_file)
+    result = process_document(
+        saved_path,
+        owner_id=owner_id,
     )
 
-    if existing_document:
-        existing_document.filename = safe_name
-        existing_document.owner_id = current_user.id
-    else:
-        db.add(
-            Document(
-                id=document_id,
-                filename=safe_name,
-                source_file=f"{saved_path.stem}_parsed_metadata_chunks.json",
-                owner_id=current_user.id,
-            )
+    source_file = f"{saved_path.stem}.json"
+
+    db.add(
+        Document(
+            id=document_id,
+            filename=safe_name,
+            source_file=source_file,
+            owner_id=current_user.id,
         )
+    )
 
     db.commit()
 
@@ -187,7 +183,7 @@ def list_documents(
 @app.delete("/documents/{document_id}")
 def delete_document(
     document_id: str,
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict[str, Any]:
     document = db.get(Document, document_id)
@@ -196,6 +192,15 @@ def delete_document(
         raise HTTPException(
             status_code=404,
             detail="Document not found.",
+        )
+
+    if (
+        current_user.role != UserRole.ADMIN.value
+        and document.owner_id != current_user.id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to delete this document.",
         )
 
     safe_name = Path(document.filename).name

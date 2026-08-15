@@ -20,6 +20,10 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [chatKey, setChatKey] = useState(0);
+
+  const [selectedDocumentId, setSelectedDocumentId] = useState("");
+
   const loadDocuments = useCallback(async () => {
     try {
       setLoading(true);
@@ -72,6 +76,11 @@ function App() {
     setError("");
   }
 
+  function handleNewChat() {
+    setSelectedDocumentId("");
+    setChatKey((current) => current + 1);
+  }
+
   if (checkingAuth) {
     return (
       <main className="auth-page">
@@ -96,14 +105,13 @@ function App() {
           </div>
         </div>
 
-        <button className="new-chat-button" type="button">
+        <button
+          className="new-chat-button"
+          type="button"
+          onClick={handleNewChat}
+        >
           + New chat
         </button>
-
-        <nav className="sidebar-nav">
-          <button type="button">Search chats</button>
-          <button type="button">Documents</button>
-        </nav>
 
         <div className="sidebar-section">
           <div className="sidebar-section-heading">
@@ -118,15 +126,9 @@ function App() {
             loading={loading}
             error={error}
             onDelete={loadDocuments}
-            canDelete={user.role === "admin"}
+            selectedDocumentId={selectedDocumentId}
+            onSelect={setSelectedDocumentId}
           />
-        </div>
-
-        <div className="sidebar-section conversations">
-          <span className="sidebar-label">Recent</span>
-          <button type="button">Open tender requirements</button>
-          <button type="button">Procurement thresholds</button>
-          <button type="button">Preference rules</button>
         </div>
 
         <div className="sidebar-footer">
@@ -153,7 +155,12 @@ function App() {
           </div>
         </header>
 
-        <Chat documents={documents} />
+        <Chat
+          key={chatKey}
+          documents={documents}
+          documentId={selectedDocumentId}
+          onDocumentChange={setSelectedDocumentId}
+        />
       </main>
     </div>
   );

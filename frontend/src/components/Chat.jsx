@@ -8,9 +8,12 @@ const suggestions = [
     "What are the open tender requirements?",
 ];
 
-function Chat({ documents }) {
+function Chat({
+    documents,
+    documentId,
+    onDocumentChange,
+}) {
     const [question, setQuestion] = useState("");
-    const [filename, setFilename] = useState("");
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -37,7 +40,7 @@ function Chat({ documents }) {
         try {
             const result = await askQuestion(
                 trimmedQuestion,
-                filename || null
+                documentId || null
             );
 
             setMessages((current) => [
@@ -73,7 +76,7 @@ function Chat({ documents }) {
                         </h1>
 
                         <p>
-                            Ask questions across your uploaded policy documents and receive
+                            Ask questions across your uploaded documents and receive
                             grounded answers with source references.
                         </p>
 
@@ -150,14 +153,14 @@ function Chat({ documents }) {
                 <textarea
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
-                    placeholder="Ask PolicyAI anything about your documents..."
+                    placeholder="Ask PolicyAI about your documents..."
                     rows="2"
                 />
 
                 <div className="composer-toolbar">
                     <select
-                        value={filename}
-                        onChange={(event) => setFilename(event.target.value)}
+                        value={documentId}
+                        onChange={(event) => onDocumentChange(event.target.value)}
                     >
                         <option value="">All documents</option>
 
@@ -179,8 +182,7 @@ function Chat({ documents }) {
             </form>
 
             <p className="assistant-notice">
-                PolicyAI may make mistakes. Verify important information against the
-                cited source.
+                Verify important information against the cited source.
             </p>
         </section>
     );

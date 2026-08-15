@@ -7,6 +7,8 @@ function DocumentList({
     loading,
     error,
     onDelete,
+    selectedDocumentId,
+    onSelect,
 }) {
     const [deleting, setDeleting] = useState("");
     const [deleteError, setDeleteError] = useState("");
@@ -26,40 +28,50 @@ function DocumentList({
     }
 
     if (loading) {
-        return <p>Loading documents...</p>;
+        return <p className="document-list-status">Loading...</p>;
     }
 
     if (error) {
-        return <p>{error}</p>;
+        return <p className="error">{error}</p>;
+    }
+
+    if (documents.length === 0) {
+        return (
+            <p className="document-list-status">
+                No documents yet.
+            </p>
+        );
     }
 
     return (
-        <section>
-            <h2>Documents</h2>
+        <div className="document-list">
+            {deleteError && <p className="error">{deleteError}</p>}
 
-            {deleteError && <p>{deleteError}</p>}
+            {documents.map((document) => (
+                <div
+                    className={`document-item ${selectedDocumentId === document.id ? "selected" : ""
+                        }`}
+                    key={document.id}
+                >
+                    <button
+                        type="button"
+                        className="document-select"
+                        onClick={() => onSelect(document.id)}
+                    >
+                        {document.filename}
+                    </button>
 
-            {documents.length === 0 ? (
-                <p>No documents uploaded.</p>
-            ) : (
-                <ul>
-                    {documents.map((document) => (
-                        <li key={document.id}>
-                            <span>{document.filename}</span>
-                            <button
-                                type="button"
-                                disabled={deleting === document.id}
-                                onClick={() => handleDelete(document.id)}
-                            >
-                                {deleting === document.id
-                                    ? "Deleting..."
-                                    : "Delete"}
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </section>
+                    <button
+                        type="button"
+                        className="document-delete"
+                        disabled={deleting === document.id}
+                        onClick={() => handleDelete(document.id)}
+                    >
+                        {deleting === document.id ? "..." : "Delete"}
+                    </button>
+                </div>
+            ))}
+        </div>
     );
 }
 

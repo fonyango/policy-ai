@@ -3,16 +3,14 @@ import { useRef, useState } from "react";
 import { uploadDocument } from "../api";
 
 function DocumentUpload({ onUpload }) {
-    const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState("");
     const fileInputRef = useRef(null);
 
-    async function handleSubmit(event) {
-        event.preventDefault();
+    async function handleFileChange(event) {
+        const selectedFile = event.target.files?.[0];
 
-        if (!file) {
-            setError("Select a PDF file.");
+        if (!selectedFile) {
             return;
         }
 
@@ -20,48 +18,40 @@ function DocumentUpload({ onUpload }) {
             setUploading(true);
             setError("");
 
-            await uploadDocument(file);
+            await uploadDocument(selectedFile);
             await onUpload();
-
-            setFile(null);
-
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
         } catch (err) {
             setError(err.message);
         } finally {
             setUploading(false);
+
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
         }
     }
 
     return (
-        <section>
-            <form onSubmit={handleSubmit}>
-                <label className="file-picker">
-                    <span className="file-picker-button">Choose PDF</span>
+        <div className="document-upload">
+            <button
+                type="button"
+                className="upload-button"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+            >
+                {uploading ? "Processing..." : "+ Upload PDF"}
+            </button>
 
-                    <span className="file-picker-name">
-                        {file ? file.name : "No file selected"}
-                    </span>
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                hidden
+                onChange={handleFileChange}
+            />
 
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="application/pdf"
-                        onChange={(event) =>
-                            setFile(event.target.files?.[0] ?? null)
-                        }
-                    />
-                </label>
-
-                <button type="submit" disabled={uploading || !file}>
-                    {uploading ? "Processing..." : "Upload PDF"}
-                </button>
-
-                {error && <p className="error">{error}</p>}
-            </form>
-        </section>
+            {error && <p className="error">{error}</p>}
+        </div>
     );
 }
 
